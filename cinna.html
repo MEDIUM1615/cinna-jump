@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini Mario</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #87CEEB;
+        }
+        #game {
+            width: 800px;
+            height: 400px;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #5da130 70%, #5da130 100%);
+            overflow: hidden;
+        }
+        #player {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            transition: transform 0.1s;
+        }
+        #player img {
+            width: 100%;
+            height: 100%;
+        }
+        .obstacle {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+        }
+        .obstacle img {
+            width: 100%;
+            height: 100%;
+        }
+        .bullet {
+            width: 20px;
+            height: 20px;
+            background: yellow;
+            border-radius: 50%;
+            position: absolute;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 2px black;
+        } 
+
+        #deathMenu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            z-index: 1000;
+        }
+
+        #restartButton {
+            background: #4CAF50;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #restartButton {
+            background: #4CAF50;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .control-button {
+            display: none;
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            border: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #jumpButton {
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+        }
+        #leftButton {
+            bottom: 20px;
+            left: 20px;
+        }
+        #rightButton {
+            bottom: 20px;
+            left: 100px;
+        }
+        @media (max-width: 800px) {
+            #game {
+                width: 100%;
+                height: 300px;
+            }
+            .control-button {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="score">Pontos: 0</div>
+        <div id="player">
+            <img src="pngegg.png" alt="player">
+        </div>
+        <div id="deathMenu">
+            <h2>Game Over!</h2>
+            <p>Pontuação: <span id="finalScore">0</span></p>
+            <button id="restartButton">Jogar Novamente</button>
+        </div>
+    </div>
+    <button id="jumpButton" class="control-button">↑</button>
+    <button id="leftButton" class="control-button">←</button>
+    <button id="rightButton" class="control-button">→</button>
+
+    <script>
+        const player = document.getElementById('player');
+        const game = document.getElementById('game');
+        const scoreElement = document.getElementById('score');
+        const deathMenu = document.getElementById('deathMenu');
+        const finalScore = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const jumpButton = document.getElementById('jumpButton');
+        const leftButton = document.getElementById('leftButton');
+        const rightButton = document.getElementById('rightButton');
+
+        let isJumping = false;
+        let gravity = 0.9;
+        let position = 0;
+        let horizontalPosition = 50;
+        let score = 0;
+        let gameIsOver = false;
+        let movingLeft = false;
+        let movingRight = false;
+
+        function control(e) {
+            if (e.code === 'Space') {
+                jump();
+            }
+            if (e.code === 'KeyA') {
+                movingLeft = e.type === 'keydown';
+            }
+            if (e.code === 'KeyD') {
+                movingRight = e.type === 'keydown';
+            }
+        }
+
+        function moveHorizontal() {
+            if (movingLeft && horizontalPosition > 0) {
+                horizontalPosition -= 5;
+            }
+            if (movingRight && horizontalPosition < game.clientWidth - 50) {
+                horizontalPosition += 5;
+            }
+            player.style.left = horizontalPosition + 'px';
+        }
+
+        function jump() {
+            if (!isJumping && !gameIsOver) {
+                isJumping = true;
+                let count = 0;
+                let timerId = setInterval(function() {
+                    // Movimento para baixo
+                    if (count > 15) {
+                        clearInterval(timerId);
+                        let downTimerId = setInterval(function() {
+                            if (count === 0) {
+                                clearInterval(downTimerId);
+                                isJumping = false;
+                            }
+                            position -= 5;
+                            count--;
+                            position = position * gravity;
+                            player.style.bottom = position + 'px';
+                        }, 20);
+                    }
+                    // Movimento para cima - Aumentei a altura do pulo
+                    position += 20;
+                    count++;
+                    position = position * gravity;
+                    player.style.bottom = position + 'px';
+                }, 20);
+            }
+        }
+
+        function createBullet(obstacle) {
+            if (gameIsOver) return;
+            
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            game.appendChild(bullet);
+            
+            const obstacleRect = obstacle.getBoundingClientRect();
+            const startX = obstacleRect.left;
+            const startY = obstacleRect.top + obstacleRect.height/2;
+            
+            bullet.style.left = startX + 'px';
+            bullet.style.top = startY + 'px';
+            
+            let bulletTimerId = setInterval(() => {
+                const bulletLeft = parseInt(bullet.style.left);
+                const playerRect = player.getBoundingClientRect();
+                
+                bullet.style.left = (bulletLeft - 5) + 'px';
+                
+                const bulletRect = bullet.getBoundingClientRect();
+                if (isColliding(bulletRect, playerRect)) {
+                    clearInterval(bulletTimerId);
+                    game.removeChild(bullet);
+                    gameOver();
+                }
+                
+                if (bulletLeft < 0) {
+                    clearInterval(bulletTimerId);
+                    game.removeChild(bullet);
+                }
+            }, 20);
+        }
+
+        function generateObstacles() {
+            let randomTime = Math.random() * 4000 + 2000;
+            const obstacle = document.createElement('div');
+            const obstacleImg = document.createElement('img');
+            obstacleImg.src = "Slime_Rimuru.png";
+            obstacle.appendChild(obstacleImg);
+            
+            obstacle.classList.add('obstacle');
+            game.appendChild(obstacle);
+            obstacle.style.left = '800px';
+
+            let shootInterval = setInterval(() => createBullet(obstacle), 3000);
+
+            let timerId = setInterval(function() {
+                if (gameIsOver) {
+                    clearInterval(timerId);
+                    clearInterval(shootInterval);
+                    return;
+                }
+
+                let obstacleLeft = parseInt(obstacle.style.left);
+                
+                obstacle.style.left = (obstacleLeft - 3) + 'px';
+
+                const obstacleRect = obstacle.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                if (isColliding(obstacleRect, playerRect)) {
+                    clearInterval(timerId);
+                    clearInterval(shootInterval);
+                    gameOver();
+                }
+
+                if (obstacleLeft === 0) {
+                    score++;
+                    scoreElement.textContent = 'Pontos: ' + score;
+                }
+
+                if (obstacleLeft < -40) {
+                    clearInterval(timerId);
+                    clearInterval(shootInterval);
+                    game.removeChild(obstacle);
+                }
+            }, 20);
+
+            if (!gameIsOver) setTimeout(generateObstacles, randomTime);
+        }
+
+        function isColliding(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                    rect1.left > rect2.right || 
+                    rect1.bottom < rect2.top || 
+                    rect1.top > rect2.bottom);
+        }
+
+        function gameOver() {
+            gameIsOver = true;
+            alert('Game Over! Pontuação: ' + score);
+            location.reload();
+        }
+
+        function gameOver() {
+            gameIsOver = true;
+            finalScore.textContent = score;
+            deathMenu.style.display = 'block';
+        }
+
+        restartButton.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Controles de teclado
+        document.addEventListener('keydown', control);
+        document.addEventListener('keyup', control);
+
+        // Controles de touch
+        jumpButton.addEventListener('touchstart', jump);
+        jumpButton.addEventListener('mousedown', jump);
+
+        leftButton.addEventListener('touchstart', () => { movingLeft = true; });
+        leftButton.addEventListener('touchend', () => { movingLeft = false; });
+        leftButton.addEventListener('mousedown', () => { movingLeft = true; });
+        leftButton.addEventListener('mouseup', () => { movingLeft = false; });
+
+        rightButton.addEventListener('touchstart', () => { movingRight = true; });
+        rightButton.addEventListener('touchend', () => { movingRight = false; });
+        rightButton.addEventListener('mousedown', () => { movingRight = true; });
+        rightButton.addEventListener('mouseup', () => { movingRight = false; });
+
+        // Game loop para movimento contínuo
+        setInterval(moveHorizontal, 20);
+
+        generateObstacles();
+    </script>
+</body>
+</html>
